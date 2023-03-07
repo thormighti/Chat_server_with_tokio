@@ -1,4 +1,4 @@
-use tokio::{net::TcpListener, io::{AsyncReadExt, AsyncWriteExt}};
+use tokio::{net::TcpListener, io::{AsyncReadExt, AsyncWriteExt, BufReader, AsyncBufReadExt}};
 
 #[tokio::main]
 async fn main() {
@@ -8,7 +8,7 @@ async fn main() {
      let (mut socket, _) = listerner.accept().await.unwrap();
 
 
-loop{
+/* loop{
    
      // what we do now is read something from client and write somwthing back
      //read memory from a network stream , we need a buffer to but that in'
@@ -22,5 +22,23 @@ loop{
     //server has echoed here
 
 
+} */
+
+//more idiomatic rust. truncating the buffer that way dont look too idiomatic
+let (read_half, mut write_half) = socket.split();
+    let mut reader = BufReader::new(read_half);
+    let mut line  = String::new();
+
+
+loop{
+    //we need a string to store each line
+
+    let byte_read = reader.read_line(&mut line).await.unwrap();
+    if byte_read == 0{
+        break;
+    }
+
+    write_half.write_all(line.as_bytes()).await.unwrap();
+    line.clear(); // avoid some repetiton on the cmd
 }
 }
