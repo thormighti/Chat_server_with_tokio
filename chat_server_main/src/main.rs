@@ -5,6 +5,7 @@ async fn main() {
     //first lests set up a listerner
     let listerner = TcpListener::bind("localhost:8080").await.unwrap();
      //time to start accepting connectiion. 
+     loop{
      let (mut socket, _) = listerner.accept().await.unwrap();
 
 
@@ -40,5 +41,6 @@ loop{
 
     write_half.write_all(line.as_bytes()).await.unwrap();
     line.clear(); // avoid some repetiton on the cmd
+}
 }
 }
