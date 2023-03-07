@@ -1,6 +1,7 @@
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
     net::TcpListener,
+    sync::broadcast,
 };
 
 #[tokio::main]
@@ -8,6 +9,9 @@ async fn main() {
     //first lests set up a listerner
     let listerner = TcpListener::bind("localhost:8080").await.unwrap();
     //time to start accepting connectiion.
+
+    // client connected need to chat with each other
+    let (tx, rx) = broadcast::channel::<String>(10);
     loop {
         let (mut socket, _) = listerner.accept().await.unwrap();
 
@@ -29,6 +33,9 @@ async fn main() {
 
         //more idiomatic rust. truncating the buffer that way dont look too idiomatic
 
+        let tx = tx.clone();
+        let mut rx = tx.subscribe(); // creates a new receiver
+
         tokio::spawn(async move {
             let (read_half, mut write_half) = socket.split();
             let mut reader = BufReader::new(read_half);
@@ -36,13 +43,29 @@ async fn main() {
             loop {
                 //we need a string to store each line
 
-                let byte_read = reader.read_line(&mut line).await.unwrap();
-                if byte_read == 0 {
+                //our message logic initially is wack. sellect macro help in only returning whrn the first concurent task completes
+                tokio::select! {
+
+                    result = reader.read_line(&mut line) =>{
+                         if result.unwrap() == 0 {
                     break;
                 }
 
-                write_half.write_all(line.as_bytes()).await.unwrap();
-                line.clear(); // avoid some repetiton on the cmd
+                tx.send(line.clone()).unwrap();
+                line.clear();
+
+                    }
+
+                    result = rx.recv() =>{
+                        let message = result.unwrap();
+                write_half.write_all(message.as_bytes()).await.unwrap();
+
+
+                    }
+
+                }
+
+                // line.clear(); // avoid some repetiton on the cmd
             }
         });
     }
