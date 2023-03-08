@@ -11,9 +11,9 @@ async fn main() {
     //time to start accepting connectiion.
 
     // client connected need to chat with each other
-    let (tx, rx) = broadcast::channel::<String>(10);
+    let (tx, rx) = broadcast::channel(10);
     loop {
-        let (mut socket, _) = listerner.accept().await.unwrap();
+        let (mut socket, addr) = listerner.accept().await.unwrap();
 
         /* loop{
 
@@ -51,15 +51,17 @@ async fn main() {
                     break;
                 }
 
-                tx.send(line.clone()).unwrap();
+                tx.send((line.clone(), addr)).unwrap();
                 line.clear();
 
                     }
 
                     result = rx.recv() =>{
-                        let message = result.unwrap();
-                write_half.write_all(message.as_bytes()).await.unwrap();
+                        let (message, other_addr) = result.unwrap();
 
+                        if addr != other_addr{
+                        write_half.write_all(message.as_bytes()).await.unwrap();
+                        }
 
                     }
 
